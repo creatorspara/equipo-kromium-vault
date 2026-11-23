@@ -4,7 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 class KromiumTheme {
   static const Color baseDark = Color(0xFF0A0A0F);
   static const Color cardBg = Color(0xFF12121A);
-  static const Color inputBg = Color(0xFF0D0D14);
+  static const Color inputBg = Color(0xFF0E0E16);
   static const Color border = Color(0xFF2A2640);
 
   static const Color primaryPurple = Color(0xFF6C4DFF);
@@ -42,6 +42,7 @@ class KromiumTheme {
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: inputBg,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
           borderSide: const BorderSide(color: border),
@@ -65,7 +66,7 @@ class KromiumTheme {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(10),
           ),
-          textStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+          textStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, letterSpacing: 0.5),
         ),
       ),
     );
