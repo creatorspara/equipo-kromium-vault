@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 class KromiumTheme {
   static const Color baseDark = Color(0xFF0A0A0F);
@@ -25,11 +24,10 @@ class KromiumTheme {
         secondary: lavender,
         surface: cardBg,
       ),
-      textTheme: GoogleFonts.soraTextTheme(
-        ThemeData.dark().textTheme.apply(
-          bodyColor: textWhite,
-          displayColor: textWhite,
-        ),
+      textTheme: ThemeData.dark().textTheme.apply(
+        fontFamily: 'Sora',
+        bodyColor: textWhite,
+        displayColor: textWhite,
       ),
       cardTheme: CardThemeData(
         color: cardBg,
