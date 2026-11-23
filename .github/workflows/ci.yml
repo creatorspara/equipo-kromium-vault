@@ -79,8 +79,20 @@ jobs:
           # Generate 100% official version-matched Flutter Android project
           flutter create --platforms=android --org com.equipokromium --project-name equipo_kromium_vault .
 
-          # Disable AarMetadata check for legacy subproject dependencies
-          echo -e '\nsubprojects {\n    tasks.configureEach {\n        if (name.contains("AarMetadata")) {\n            enabled = false\n        }\n    }\n}' >> android/build.gradle.kts
+          # Align subprojects compileSdk to 36 for modern Android plugin compatibility
+          cat << 'EOF' >> android/build.gradle.kts
+
+subprojects {
+    afterEvaluate {
+        project.extensions.findByName("android")?.let { android ->
+            try {
+                val method = android.javaClass.getMethod("setCompileSdkVersion", Int::class.javaPrimitiveType)
+                method.invoke(android, 36)
+            } catch (_: Exception) {}
+        }
+    }
+}
+EOF
           sed -i 's/compileSdk = .*/compileSdk = 36/g' android/app/build.gradle.kts || true
 
           # Restore custom branding and MainActivity
