@@ -1,9 +1,13 @@
 """
 Packages Android APK container for Equipo Kromium Vault
 """
+import sys
 import zipfile
 import shutil
 from pathlib import Path
+
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
 base_dir = Path(__file__).resolve().parent
 dist_dir = base_dir / "dist"
@@ -25,4 +29,4 @@ with zipfile.ZipFile(apk_path, "w", zipfile.ZIP_DEFLATED) as zipf:
 mob_release = base_dir / "flutter_mobile" / "release"
 mob_release.mkdir(parents=True, exist_ok=True)
 shutil.copy(apk_path, mob_release / "EquipoKromium.apk")
-print(f"[✔] Generated {apk_path} ({apk_path.stat().st_size} bytes)")
+print(f"[OK] Generated {apk_path} ({apk_path.stat().st_size} bytes)")

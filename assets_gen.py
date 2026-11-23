@@ -11,8 +11,12 @@ the official 'Equipo Kromium' brand guidelines:
 
 import math
 import os
+import sys
 from pathlib import Path
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
+
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
 
 ASSETS_DIR = Path(__file__).resolve().parent / "assets"
@@ -97,7 +101,7 @@ def generate_app_icon():
     icon_ico_path = ASSETS_DIR / "app_icon.ico"
     ico_sizes = [(256, 256), (128, 128), (64, 64), (48, 48), (32, 32), (16, 16)]
     img.save(icon_ico_path, format="ICO", sizes=ico_sizes)
-    print(f"[✔] Generated {icon_png_path} and {icon_ico_path}")
+    print(f"[OK] Generated {icon_png_path} and {icon_ico_path}")
 
 
 def generate_enhanced_background():
@@ -158,7 +162,7 @@ def generate_enhanced_background():
     # Save wallpaper
     bg_path = ASSETS_DIR / "enhanced_background.png"
     bg.save(bg_path, "PNG")
-    print(f"[✔] Generated {bg_path}")
+    print(f"[OK] Generated {bg_path}")
 
 
 def generate_brand_banner():
@@ -174,7 +178,7 @@ def generate_brand_banner():
     # Save
     banner_path = ASSETS_DIR / "kromium_brand_mark.png"
     img.save(banner_path, "PNG")
-    print(f"[✔] Generated {banner_path}")
+    print(f"[OK] Generated {banner_path}")
 
 
 if __name__ == "__main__":
