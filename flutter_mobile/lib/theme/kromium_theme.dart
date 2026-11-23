@@ -31,7 +31,7 @@ class KromiumTheme {
           displayColor: textWhite,
         ),
       ),
-      cardTheme: CardTheme(
+      cardTheme: CardThemeData(
         color: cardBg,
         elevation: 0,
         shape: RoundedRectangleBorder(
