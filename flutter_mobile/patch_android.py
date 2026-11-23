@@ -116,19 +116,31 @@ def patch_manifest():
     with open(manifest_path, "r", encoding="utf-8") as f:
         content = f.read()
         
-    if "android.permission.READ_EXTERNAL_STORAGE" not in content:
-        permissions = (
-            '    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />\n'
-            '    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />\n'
-            '    <application'
-        )
-        content = content.replace("<application", permissions, 1)
+    permissions = (
+        '    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />\n'
+        '    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />\n'
+        '    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" />\n'
+        '    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />\n'
+        '    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />\n'
+        '    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />\n'
+        '    <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />\n'
+        '    <application'
+    )
+    if "android.permission.MANAGE_EXTERNAL_STORAGE" not in content:
+        if "<uses-permission" in content:
+            # Replace existing permissions or prepend to application
+            content = re.sub(r'(<uses-permission[^>]+>\s*)+<application', permissions, content)
+        else:
+            content = content.replace("<application", permissions, 1)
+
+    if 'android:requestLegacyExternalStorage="true"' not in content:
+        content = content.replace('<application', '<application android:requestLegacyExternalStorage="true"', 1)
         
     content = re.sub(r'android:label="[^"]*"', 'android:label="Equipo Kromium Vault"', content)
     
     with open(manifest_path, "w", encoding="utf-8") as f:
         f.write(content)
-    print(f"[OK] Patched {manifest_path} with permissions and app label.")
+    print(f"[OK] Patched {manifest_path} with comprehensive permissions and app label.")
 
 if __name__ == "__main__":
     patch_app_build_gradle()

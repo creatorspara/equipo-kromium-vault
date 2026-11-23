@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Equipo Kromium Vault — Authenticated File Security Ecosystem</title>
+  <meta name="description" content="Official Zero-Knowledge File Security Ecosystem by Equipo Kromium. Direct downloads for Windows (.exe) and Android (.apk), and instant in-browser client-side Web Vault powered by NIST SP 800-38D AES-256-GCM and PBKDF2.">
+  <meta name="theme-color" content="#0A0A0F">
+
+  <!-- PWA Manifest & Icons -->
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" type="image/x-icon" href="assets/favicon.ico">
+  <link rel="icon" type="image/png" sizes="192x192" href="assets/icon-192.png">
+  <link rel="apple-touch-icon" href="assets/icon-192.png">
+
+  <!-- Optimized Google Fonts Loading (Display Swap, Preconnect) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Sora:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Background Art & Ambient Glows -->
+  <div class="bg-art-layer" aria-hidden="true"></div>
+  <div class="ambient-glow glow-1" aria-hidden="true"></div>
+  <div class="ambient-glow glow-2" aria-hidden="true"></div>
+
+  <!-- Toast Notice -->
+  <div id="toast" role="status" aria-live="polite"></div>
+
+  <!-- App Header -->
+  <header class="app-header">
+    <div class="container header-flex">
+      <a href="./" class="brand-combo">
+        <svg class="brand-emblem-svg" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="Equipo Kromium Logo">
+          <polygon points="12,14 36,14 56,46 32,46" fill="#6C4DFF" />
+          <polygon points="12,54 36,54 56,86 32,86" fill="#6C4DFF" />
+          <polygon points="66,14 90,14 56,50 42,50" fill="#A78BFA" />
+          <polygon points="42,50 62,50 90,86 66,86" fill="#6C4DFF" />
+        </svg>
+        <div class="brand-meta">
+          <h1>Equipo Kromium <span class="version-pill">v1.1.0 Stable</span></h1>
+          <span class="tagline">Build &middot; Open &middot; Share</span>
+        </div>
+      </a>
+
+      <nav class="header-nav">
+        <a href="https://github.com/creatorspara/equipo-kromium-vault/releases/latest/download/EquipoKromium-Windows.exe" class="btn-sm btn-ghost">
+          <span>💻 Windows (.exe)</span>
+        </a>
+        <a href="https://github.com/creatorspara/equipo-kromium-vault/releases/latest/download/EquipoKromium-Android.apk" class="btn-sm btn-ghost">
+          <span>📱 Android (.apk)</span>
+        </a>
+        <a href="#web-vault" class="btn-sm btn-primary-sm">
+          <span>⚡ Web Vault</span>
+        </a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="container">
+    <!-- Hero Section -->
+    <section class="hero-section">
+      <div class="badge-tag">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+        NIST SP 800-38D AES-256-GCM Authenticated Encryption
+      </div>
+      <h2 class="hero-title">
+        Next-Generation <span class="gradient-text">Zero-Knowledge</span><br>File Security Ecosystem
+      </h2>
+      <p class="hero-desc">
+        Engineered by <strong>Equipo Kromium</strong>. High-entropy file encryption with 600,000 PBKDF2 rounds, authenticated container headers, and zero cloud telemetry. Download standalone binaries or encrypt right in your browser.
+      </p>
+    </section>
+
+    <!-- Platform Download Cards -->
+    <section class="download-grid" id="downloads">
+      <!-- Windows PC Card -->
+      <article class="download-card">
+        <div>
+          <div class="card-header-row">
+            <div class="platform-icon icon-pc">💻</div>
+            <span class="status-badge badge-green">✔ Standalone Desktop</span>
+          </div>
+          <h3 class="card-title">Windows Application</h3>
+          <div class="card-filename">EquipoKromium-Windows.exe (15.5 MB)</div>
+          <p class="card-body-text">
+            Single-file portable desktop vault. Operates in isolated CPU memory with zero runtime dependencies and background cryptographic worker threads.
+          </p>
+          <div class="specs-list">
+            <div class="row"><span>Target OS:</span><span class="val">Windows 10 / 11 (64-bit)</span></div>
+            <div class="row"><span>Packaging:</span><span class="val">Zero-Install Portable Executable</span></div>
+            <div class="row"><span>Memory Footprint:</span><span class="val">~42 MB RAM</span></div>
+          </div>
+        </div>
+        <a href="https://github.com/creatorspara/equipo-kromium-vault/releases/latest/download/EquipoKromium-Windows.exe" class="btn-download-lg btn-pc">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+          Download for Windows (.exe)
+        </a>
+      </article>
+
+      <!-- Android APK Card -->
+      <article class="download-card">
+        <div>
+          <div class="card-header-row">
+            <div class="platform-icon icon-android">📱</div>
+            <span class="status-badge badge-green">✔ Full Release APK</span>
+          </div>
+          <h3 class="card-title">Android Application</h3>
+          <div class="card-filename">EquipoKromium-Android.apk (49.2 MB)</div>
+          <p class="card-body-text">
+            Compiled native release package built using Flutter. Features direct-to-Downloads storage integration, container inspection, and zero internet permission requirement.
+          </p>
+          <div class="specs-list">
+            <div class="row"><span>Compatibility:</span><span class="val">Android 7.0+ (ARM64 &amp; x86_64)</span></div>
+            <div class="row"><span>Build Engine:</span><span class="val">Flutter 3.50+ / Kotlin DSL</span></div>
+            <div class="row"><span>Storage Access:</span><span class="val">Public Downloads Integration</span></div>
+          </div>
+        </div>
+        <a href="https://github.com/creatorspara/equipo-kromium-vault/releases/latest/download/EquipoKromium-Android.apk" class="btn-download-lg btn-android">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+          Download for Android (.apk)
+        </a>
+      </article>
+    </section>
+
+    <!-- Interactive Client-Side Web Vault -->
+    <section class="vault-section" id="web-vault">
+      <div class="vault-wrapper">
+        <div class="vault-header-bar">
+          <div class="vault-header-title">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#6C4DFF" stroke-width="2.5"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+            <h2>Interactive Web Crypto Vault</h2>
+          </div>
+          <span class="spec-chip">Hardware-Accelerated Client-Side Web Crypto API</span>
+        </div>
+
+        <!-- Navigation Tabs -->
+        <nav class="vault-nav-tabs" role="tablist">
+          <button class="tab-btn active" data-tab="tab-text" role="tab">
+            <span>📝</span> Direct Text Vault
+          </button>
+          <button class="tab-btn" data-tab="tab-file" role="tab">
+            <span>📁</span> File Container Vault
+          </button>
+          <button class="tab-btn" data-tab="tab-decrypt" role="tab">
+            <span>🔓</span> Decrypt .kromium
+          </button>
+        </nav>
+
+        <!-- TAB 1: Direct Text Encryption -->
+        <div class="tab-content active" id="tab-text" role="tabpanel">
+          <div class="intro-desc">
+            <h3>Direct Text &amp; Password Encryption</h3>
+            <p>Type or paste secret credentials, keys, or private notes. The engine compiles them directly into an authenticated <code>.kromium</code> container.</p>
+          </div>
+
+          <div class="form-group">
+            <label for="text-input">Sensitive Plaintext / Passwords / Secrets:</label>
+            <textarea id="text-input" placeholder="Enter sensitive credentials, tokens, or private notes to encrypt..."></textarea>
+          </div>
+
+          <div class="form-group">
+            <label for="text-filename">Target .kromium Container Filename:</label>
+            <input type="text" id="text-filename" value="vault_secret.kromium" placeholder="vault_secret.kromium">
+          </div>
+
+          <div class="grid-2">
+            <div class="form-group">
+              <label for="text-password">Master Password:</label>
+              <div class="pwd-field">
+                <input type="password" id="text-password" placeholder="Enter master password">
+                <button type="button" class="toggle-pwd" data-target="text-password" aria-label="Toggle password visibility">👁</button>
+              </div>
+              <div class="entropy-container">
+                <div class="entropy-meta">
+                  <span style="color: var(--text-muted);">Entropy Strength</span>
+                  <span id="text-entropy-label" style="font-weight: 700; color: var(--secondary);">Score: 0 / 100</span>
+                </div>
+                <div class="entropy-track">
+                  <div class="entropy-fill" id="text-entropy-fill"></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="text-confirm">Confirm Master Password:</label>
+              <div class="pwd-field">
+                <input type="password" id="text-confirm" placeholder="Repeat master password">
+                <button type="button" class="toggle-pwd" data-target="text-confirm" aria-label="Toggle confirm password visibility">👁</button>
+              </div>
+            </div>
+          </div>
+
+          <button id="btn-encrypt-text" class="btn-action">
+            🔒 Encrypt &amp; Download .kromium File
+          </button>
+          <div id="text-result-box" class="result-box"></div>
+        </div>
+
+        <!-- TAB 2: File Container Encryption -->
+        <div class="tab-content" id="tab-file" role="tabpanel">
+          <div class="intro-desc">
+            <h3>File Container Vault</h3>
+            <p>Encrypt any file format (.pdf, .docx, .png, .db, .zip) into an encrypted <code>.kromium</code> container without uploading to any remote server.</p>
+          </div>
+
+          <div class="file-dropzone" id="file-dropzone">
+            <div class="dropzone-icon">📁</div>
+            <div class="dropzone-text">Click to choose or drag &amp; drop any target file</div>
+            <div class="dropzone-sub">Files are processed 100% locally in browser memory via Web Crypto API</div>
+            <input type="file" id="file-picker-input" style="display: none;">
+            <div id="file-selected-badge" class="selected-badge"></div>
+          </div>
+
+          <div class="grid-2">
+            <div class="form-group">
+              <label for="file-password">Master Password:</label>
+              <div class="pwd-field">
+                <input type="password" id="file-password" placeholder="Enter master password">
+                <button type="button" class="toggle-pwd" data-target="file-password" aria-label="Toggle password visibility">👁</button>
+              </div>
+              <div class="entropy-container">
+                <div class="entropy-meta">
+                  <span style="color: var(--text-muted);">Entropy Strength</span>
+                  <span id="file-entropy-label" style="font-weight: 700; color: var(--secondary);">Score: 0 / 100</span>
+                </div>
+                <div class="entropy-track">
+                  <div class="entropy-fill" id="file-entropy-fill"></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="file-confirm">Confirm Master Password:</label>
+              <div class="pwd-field">
+                <input type="password" id="file-confirm" placeholder="Repeat master password">
+                <button type="button" class="toggle-pwd" data-target="file-confirm" aria-label="Toggle confirm password visibility">👁</button>
+              </div>
+            </div>
+          </div>
+
+          <button id="btn-encrypt-file" class="btn-action">
+            🔒 Encrypt File to .kromium
+          </button>
+          <div id="file-result-box" class="result-box"></div>
+        </div>
+
+        <!-- TAB 3: Decrypt Container -->
+        <div class="tab-content" id="tab-decrypt" role="tabpanel">
+          <div class="intro-desc">
+            <h3>Tamper-Evident Decryption</h3>
+            <p>Select any <code>.kromium</code> container. The cryptographic engine verifies the 16-byte GCM authentication tag before releasing the payload.</p>
+          </div>
+
+          <div class="file-dropzone" id="decrypt-dropzone">
+            <div class="dropzone-icon">🔓</div>
+            <div class="dropzone-text">Select or drag &amp; drop a .kromium container file</div>
+            <div class="dropzone-sub">Authenticated against 128-bit GCM MAC and PBKDF2 salt</div>
+            <input type="file" id="decrypt-file-input" accept=".kromium,.bin" style="display: none;">
+            <div id="decrypt-selected-badge" class="selected-badge"></div>
+          </div>
+
+          <div class="form-group">
+            <label for="decrypt-password">Master Password:</label>
+            <div class="pwd-field">
+              <input type="password" id="decrypt-password" placeholder="Enter password used to encrypt this container">
+              <button type="button" class="toggle-pwd" data-target="decrypt-password" aria-label="Toggle password visibility">👁</button>
+            </div>
+          </div>
+
+          <button id="btn-decrypt-container" class="btn-action">
+            🔓 Decrypt &amp; Authenticate Container
+          </button>
+          <div id="decrypt-result-box" class="result-box"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Technical Architecture Specifications -->
+    <section class="specs-section">
+      <h3 class="specs-title">Cryptographic Architecture</h3>
+      <div class="specs-grid">
+        <div class="spec-card">
+          <div class="spec-card-icon">🛡️</div>
+          <h4 class="spec-card-title">AES-256-GCM AEAD</h4>
+          <p class="spec-card-desc">NIST SP 800-38D authenticated encryption. Every ciphertext block is linked with a 128-bit MAC tag to instantly detect any file tampering or bit-flipping.</p>
+        </div>
+        <div class="spec-card">
+          <div class="spec-card-icon">⏳</div>
+          <h4 class="spec-card-title">600,000 PBKDF2 Rounds</h4>
+          <p class="spec-card-desc">Key derivation with HMAC-SHA256 and a cryptographically secure 32-byte per-file salt, nullifying rainbow tables and ASIC/GPU brute-force attacks.</p>
+        </div>
+        <div class="spec-card">
+          <div class="spec-card-icon">📦</div>
+          <h4 class="spec-card-title">.kromium Container v1</h4>
+          <p class="spec-card-desc">Open standard binary container format with magic bytes <code>KROMIUM\0</code>, original filename preservation, and authenticated header AAD.</p>
+        </div>
+        <div class="spec-card">
+          <div class="spec-card-icon">⚡</div>
+          <h4 class="spec-card-title">Zero-Knowledge Offline</h4>
+          <p class="spec-card-desc">All cryptographic operations run locally on the client machine. Zero server telemetry, zero external APIs, zero third-party dependencies.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Integrity Verification Bar -->
+    <section class="verify-bar">
+      <div>
+        <span style="font-weight: 700; color: var(--text-white);">Verify SHA-256 Checksum (PowerShell):</span>
+        <code class="verify-code">Get-FileHash -Algorithm SHA256 .\EquipoKromium-Windows.exe</code>
+      </div>
+      <button onclick="copyCommand('Get-FileHash -Algorithm SHA256 .\\EquipoKromium-Windows.exe')" class="btn-sm btn-ghost">
+        <span>📋 Copy Command</span>
+      </button>
+    </section>
+  </main>
+
+  <!-- App Footer -->
+  <footer class="app-footer">
+    <div class="container footer-flex">
+      <div>
+        <strong>Equipo Kromium Vault</strong> &bull; Student-led Open Source Team &bull; TKMCE
+        <div style="font-size: 0.72rem; color: var(--secondary); margin-top: 4px;">
+          Build &middot; Open &middot; Share
+        </div>
+      </div>
+      <div class="footer-links">
+        <a href="https://github.com/creatorspara/equipo-kromium-vault" target="_blank" rel="noopener">GitHub Repository</a>
+        <a href="https://github.com/creatorspara/equipo-kromium-vault/releases/tag/v1.1.0" target="_blank" rel="noopener">Release v1.1.0</a>
+        <a href="https://github.com/creatorspara/equipo-kromium-vault/releases/latest/download/EquipoKromium-Windows.exe">Windows (.exe)</a>
+        <a href="https://github.com/creatorspara/equipo-kromium-vault/releases/latest/download/EquipoKromium-Android.apk">Android (.apk)</a>
+      </div>
+    </div>
+  </footer>
+
+  <script src="app.js" defer></script>
+</body>
+</html>

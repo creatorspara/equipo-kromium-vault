@@ -1,6 +1,7 @@
 // Equipo Kromium - Mobile Vault Application (Flutter / Dart)
 // Brand Kit: Equipo Kromium (Build · Open · Share)
 // Theme: Obsidian Base (#0A0A0F), Primary Purple (#6C4DFF), Lavender (#A78BFA)
+// Public Storage Integration: /storage/emulated/0/Download/EquipoKromium/
 
 import 'dart:convert';
 import 'dart:io';
@@ -40,16 +41,20 @@ class VaultHomeScreen extends StatefulWidget {
 
 class _VaultHomeScreenState extends State<VaultHomeScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  static const MethodChannel _platform = MethodChannel('com.equipokromium.vault/platform');
 
   // Controllers for text encryption
   final TextEditingController _textInputController = TextEditingController();
+  final TextEditingController _textFilenameController = TextEditingController();
   final TextEditingController _textPasswordController = TextEditingController();
   final TextEditingController _textConfirmPasswordController = TextEditingController();
+  bool _textSaveToPublicDownloads = true;
 
   // Controllers for file encryption
   PlatformFile? _selectedFile;
   final TextEditingController _filePasswordController = TextEditingController();
   final TextEditingController _fileConfirmPasswordController = TextEditingController();
+  bool _fileSaveToPublicDownloads = true;
   bool _autoDeleteSource = true;
 
   // Controllers for decryption
@@ -58,6 +63,7 @@ class _VaultHomeScreenState extends State<VaultHomeScreen> with SingleTickerProv
   bool _autoDeleteKromiumOnDecrypt = true;
   String _decryptedPlaintext = "";
   Map<String, dynamic>? _lastDecryptedMeta;
+  Uint8List? _lastDecryptedRawBytes;
 
   bool _isProcessing = false;
   bool _obscurePassword = true;
@@ -72,12 +78,68 @@ class _VaultHomeScreenState extends State<VaultHomeScreen> with SingleTickerProv
   void dispose() {
     _tabController.dispose();
     _textInputController.dispose();
+    _textFilenameController.dispose();
     _textPasswordController.dispose();
     _textConfirmPasswordController.dispose();
     _filePasswordController.dispose();
     _fileConfirmPasswordController.dispose();
     _decryptPasswordController.dispose();
     super.dispose();
+  }
+
+  // -------------------------------------------------------------
+  // Storage & Android Public Downloads Integration
+  // -------------------------------------------------------------
+  Future<Directory> _resolveSaveDirectory({bool preferPublicDownloads = true}) async {
+    if (Platform.isAndroid && preferPublicDownloads) {
+      // 1. Direct standard public Downloads folder for Equipo Kromium
+      final publicDownload = Directory('/storage/emulated/0/Download/EquipoKromium');
+      try {
+        if (!await publicDownload.exists()) {
+          await publicDownload.create(recursive: true);
+        }
+        return publicDownload;
+      } catch (_) {
+        // 2. Fallback to /storage/emulated/0/Download
+        final rootDownload = Directory('/storage/emulated/0/Download');
+        try {
+          if (await rootDownload.exists()) {
+            return rootDownload;
+          }
+        } catch (_) {}
+      }
+      // 3. Fallback to external storage directory from path_provider
+      try {
+        final ext = await getExternalStorageDirectory();
+        if (ext != null) {
+          final sub = Directory('${ext.path}/EquipoKromium');
+          if (!await sub.exists()) await sub.create(recursive: true);
+          return sub;
+        }
+      } catch (_) {}
+    }
+    // Default to app documents directory
+    return await getApplicationDocumentsDirectory();
+  }
+
+  Future<void> _notifyMediaScanner(String filePath) async {
+    if (Platform.isAndroid) {
+      try {
+        await _platform.invokeMethod('scanFile', {'path': filePath});
+      } catch (_) {}
+    }
+  }
+
+  Future<void> _requestManageStoragePermission() async {
+    if (Platform.isAndroid) {
+      try {
+        await _platform.invokeMethod('openManageStorageSettings');
+      } catch (e) {
+        _showFeedback("Could not open settings: $e", isError: true);
+      }
+    } else {
+      _showFeedback("External storage management is native to Android.");
+    }
   }
 
   void _showFeedback(String message, {bool isError = false}) {
@@ -99,6 +161,141 @@ class _VaultHomeScreenState extends State<VaultHomeScreen> with SingleTickerProv
         margin: const EdgeInsets.all(12),
         duration: const Duration(seconds: 4),
       ),
+    );
+  }
+
+  void _showSaveSuccessModal({
+    required String title,
+    required String savedPath,
+    required int fileSize,
+    String? originalDeletedNote,
+  }) {
+    if (!mounted) return;
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) {
+        return Container(
+          padding: const EdgeInsets.all(20),
+          decoration: const BoxDecoration(
+            color: KromiumTheme.cardBg,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+            border: Border(
+              top: BorderSide(color: KromiumTheme.primaryPurple, width: 2),
+              left: BorderSide(color: KromiumTheme.border),
+              right: BorderSide(color: KromiumTheme.border),
+            ),
+          ),
+          child: SafeArea(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: KromiumTheme.success.withOpacity(0.15),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.check_circle, color: KromiumTheme.success, size: 28),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: KromiumTheme.textWhite)),
+                          const Text("Stored in Public Device Storage", style: TextStyle(fontSize: 12, color: KromiumTheme.lavender)),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close, color: KromiumTheme.textMuted),
+                      onPressed: () => Navigator.pop(ctx),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: KromiumTheme.inputBg,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: KromiumTheme.border),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text("Saved File Location:", style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: KromiumTheme.lightAccent)),
+                          Text("${(fileSize / 1024).toStringAsFixed(1)} KB", style: const TextStyle(fontSize: 11, color: KromiumTheme.textMuted)),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      SelectableText(
+                        savedPath,
+                        style: const TextStyle(fontSize: 12, color: KromiumTheme.textWhite, fontFamily: 'monospace'),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: KromiumTheme.primaryPurple.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: KromiumTheme.primaryPurple.withOpacity(0.3)),
+                  ),
+                  child: Row(
+                    children: const [
+                      Icon(Icons.info_outline, color: KromiumTheme.lightAccent, size: 18),
+                      SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          "Visible in your phone's 'Downloads' or 'Files' app under the 'EquipoKromium' folder.",
+                          style: TextStyle(fontSize: 11, color: KromiumTheme.lightAccent),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                if (originalDeletedNote != null) ...[
+                  const SizedBox(height: 8),
+                  Text(originalDeletedNote, style: const TextStyle(fontSize: 11, color: Colors.amber, fontStyle: FontStyle.italic)),
+                ],
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        icon: const Icon(Icons.copy, size: 16, color: KromiumTheme.lavender),
+                        label: const Text("COPY PATH", style: TextStyle(color: KromiumTheme.lavender, fontSize: 12)),
+                        onPressed: () {
+                          Clipboard.setData(ClipboardData(text: savedPath));
+                          _showFeedback("✔ File path copied to clipboard!");
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton(
+                        child: const Text("DONE", style: TextStyle(fontSize: 12)),
+                        onPressed: () => Navigator.pop(ctx),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -160,7 +357,57 @@ class _VaultHomeScreenState extends State<VaultHomeScreen> with SingleTickerProv
     );
   }
 
-  // Action 1: Direct Text Encryption -> Auto-create .kromium container
+  Widget _buildStorageBanner() {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: KromiumTheme.cardBg,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: KromiumTheme.border),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: KromiumTheme.primaryPurple.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Icon(Icons.folder_special, color: KromiumTheme.lavender, size: 20),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: const [
+                Text("Public Storage: Downloads/EquipoKromium", style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: KromiumTheme.textWhite)),
+                Text("Directly visible in Android Files & Downloads", style: TextStyle(fontSize: 10, color: KromiumTheme.textMuted)),
+              ],
+            ),
+          ),
+          TextButton.icon(
+            icon: const Icon(Icons.security, size: 14, color: KromiumTheme.lightAccent),
+            label: const Text("Access", style: TextStyle(fontSize: 11, color: KromiumTheme.lightAccent)),
+            onPressed: _requestManageStoragePermission,
+          ),
+        ],
+      ),
+    );
+  }
+
+  int _getFileSize(PlatformFile file) {
+    if (file.path != null) {
+      try {
+        return File(file.path!).lengthSync();
+      } catch (_) {}
+    }
+    return 0;
+  }
+
+  // -------------------------------------------------------------
+  // Action 1: Direct Text Encryption -> Save to Public Downloads
+  // -------------------------------------------------------------
   Future<void> _encryptDirectText() async {
     final text = _textInputController.text.trim();
     final pwd = _textPasswordController.text;
@@ -181,19 +428,36 @@ class _VaultHomeScreenState extends State<VaultHomeScreen> with SingleTickerProv
 
     setState(() => _isProcessing = true);
     try {
-      final dir = await getApplicationDocumentsDirectory();
-      final timestamp = DateTime.now().millisecondsSinceEpoch;
-      final outPath = "${dir.path}/vault_note_$timestamp.kromium";
+      final dir = await _resolveSaveDirectory(preferPublicDownloads: _textSaveToPublicDownloads);
+      String rawFilename = _textFilenameController.text.trim();
+      if (rawFilename.isEmpty) {
+        final timestamp = DateTime.now().millisecondsSinceEpoch;
+        rawFilename = "vault_note_$timestamp";
+      }
+      if (!rawFilename.endsWith(".kromium")) {
+        rawFilename = "$rawFilename.kromium";
+      }
+
+      final outPath = "${dir.path}/$rawFilename";
       await KromiumCipher.encryptTextToFile(
         text: text,
         outputPath: outPath,
         password: pwd,
       );
 
+      await _notifyMediaScanner(outPath);
+      final savedSize = File(outPath).lengthSync();
+
       _textInputController.clear();
+      _textFilenameController.clear();
       _textPasswordController.clear();
       _textConfirmPasswordController.clear();
-      _showFeedback("✔ Created .kromium vault container at:\n$outPath");
+
+      _showSaveSuccessModal(
+        title: "Vault Container Created",
+        savedPath: outPath,
+        fileSize: savedSize,
+      );
     } catch (e) {
       _showFeedback("Encryption error: $e", isError: true);
     } finally {
@@ -201,16 +465,9 @@ class _VaultHomeScreenState extends State<VaultHomeScreen> with SingleTickerProv
     }
   }
 
-  int _getFileSize(PlatformFile file) {
-    if (file.path != null) {
-      try {
-        return File(file.path!).lengthSync();
-      } catch (_) {}
-    }
-    return 0;
-  }
-
+  // -------------------------------------------------------------
   // Action 2: File Encryption -> Auto-delete source file
+  // -------------------------------------------------------------
   Future<void> _pickSourceFile() async {
     try {
       final files = await FilePicker.pickFiles();
@@ -240,8 +497,15 @@ class _VaultHomeScreenState extends State<VaultHomeScreen> with SingleTickerProv
     setState(() => _isProcessing = true);
     try {
       final srcFile = File(_selectedFile!.path!);
-      final outPath = "${_selectedFile!.path!}.kromium";
       final origName = _selectedFile!.name;
+      
+      String outPath;
+      if (_fileSaveToPublicDownloads) {
+        final dir = await _resolveSaveDirectory(preferPublicDownloads: true);
+        outPath = "${dir.path}/$origName.kromium";
+      } else {
+        outPath = "${_selectedFile!.path!}.kromium";
+      }
 
       await KromiumCipher.encryptFileAutoDelete(
         inputFile: srcFile,
@@ -250,14 +514,23 @@ class _VaultHomeScreenState extends State<VaultHomeScreen> with SingleTickerProv
         deleteSource: _autoDeleteSource,
       );
 
-      final msg = _autoDeleteSource
-          ? "✔ Encrypted to: $outPath\n(Original '$origName' was securely shredded & unlinked)"
-          : "✔ Encrypted to: $outPath";
+      await _notifyMediaScanner(outPath);
+      final savedSize = File(outPath).lengthSync();
+
+      final shredNote = _autoDeleteSource
+          ? "Original file '$origName' was securely overwritten and unlinked."
+          : null;
 
       setState(() => _selectedFile = null);
       _filePasswordController.clear();
       _fileConfirmPasswordController.clear();
-      _showFeedback(msg);
+
+      _showSaveSuccessModal(
+        title: "File Encrypted Successfully",
+        savedPath: outPath,
+        fileSize: savedSize,
+        originalDeletedNote: shredNote,
+      );
     } catch (e) {
       _showFeedback("File encryption error: $e", isError: true);
     } finally {
@@ -265,7 +538,9 @@ class _VaultHomeScreenState extends State<VaultHomeScreen> with SingleTickerProv
     }
   }
 
+  // -------------------------------------------------------------
   // Action 3: Decryption & Auto-Delete Container
+  // -------------------------------------------------------------
   Future<void> _pickKromiumFile() async {
     try {
       final files = await FilePicker.pickFiles(
@@ -277,6 +552,7 @@ class _VaultHomeScreenState extends State<VaultHomeScreen> with SingleTickerProv
           _selectedKromiumFile = files.first;
           _decryptedPlaintext = "";
           _lastDecryptedMeta = null;
+          _lastDecryptedRawBytes = null;
         });
       }
     } catch (e) {
@@ -302,7 +578,7 @@ class _VaultHomeScreenState extends State<VaultHomeScreen> with SingleTickerProv
       final result = await KromiumCipher.decryptBytes(containerBytes: bytes, password: pwd);
 
       final plaintextBytes = result["plaintext"] as Uint8List;
-      final originalFilename = result["originalFilename"] as String? ?? "secret.txt";
+      final originalFilename = result["originalFilename"] as String? ?? "restored_file.bin";
 
       bool isText = false;
       String textContent = "";
@@ -314,24 +590,32 @@ class _VaultHomeScreenState extends State<VaultHomeScreen> with SingleTickerProv
       }
 
       setState(() {
+        _lastDecryptedRawBytes = plaintextBytes;
         _lastDecryptedMeta = {
           "filename": originalFilename,
           "size": plaintextBytes.length,
           "iterations": result["iterations"] ?? 600000,
+          "isText": isText,
         };
         if (isText) {
           _decryptedPlaintext = textContent;
         }
       });
 
-      // Restore to storage if binary or if desired
+      // Restore directly to public storage if binary
       if (!isText) {
-        final dir = await getApplicationDocumentsDirectory();
+        final dir = await _resolveSaveDirectory(preferPublicDownloads: true);
         final restoreFile = File("${dir.path}/$originalFilename");
         await restoreFile.writeAsBytes(plaintextBytes, flush: true);
-        _showFeedback("✔ Decrypted & restored file to:\n${restoreFile.path}");
+        await _notifyMediaScanner(restoreFile.path);
+
+        _showSaveSuccessModal(
+          title: "Restored Binary File",
+          savedPath: restoreFile.path,
+          fileSize: plaintextBytes.length,
+        );
       } else {
-        _showFeedback("✔ Decrypted container successfully!");
+        _showFeedback("✔ Container decrypted! Preview and save options available below.");
       }
 
       // Securely shred container if auto-delete is enabled
@@ -340,12 +624,42 @@ class _VaultHomeScreenState extends State<VaultHomeScreen> with SingleTickerProv
         await file.writeAsBytes(rand, flush: true);
         await file.delete();
         setState(() => _selectedKromiumFile = null);
-        _showFeedback("✔ Decrypted! Container was securely shredded and deleted.");
       }
     } catch (e) {
       _showFeedback("Decryption failed: $e", isError: true);
     } finally {
       setState(() => _isProcessing = false);
+    }
+  }
+
+  Future<void> _saveDecryptedTextToDownloads() async {
+    if (_decryptedPlaintext.isEmpty && _lastDecryptedRawBytes == null) {
+      _showFeedback("No decrypted data available to save.", isError: true);
+      return;
+    }
+
+    try {
+      final dir = await _resolveSaveDirectory(preferPublicDownloads: true);
+      final filename = _lastDecryptedMeta?['filename'] ?? "decrypted_note.txt";
+      final outPath = "${dir.path}/$filename";
+      final outFile = File(outPath);
+
+      if (_decryptedPlaintext.isNotEmpty) {
+        await outFile.writeAsString(_decryptedPlaintext, flush: true);
+      } else {
+        await outFile.writeAsBytes(_lastDecryptedRawBytes!, flush: true);
+      }
+
+      await _notifyMediaScanner(outPath);
+      final savedSize = outFile.lengthSync();
+
+      _showSaveSuccessModal(
+        title: "File Saved to Public Downloads",
+        savedPath: outPath,
+        fileSize: savedSize,
+      );
+    } catch (e) {
+      _showFeedback("Error saving to downloads: $e", isError: true);
     }
   }
 
@@ -449,6 +763,7 @@ class _VaultHomeScreenState extends State<VaultHomeScreen> with SingleTickerProv
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          _buildStorageBanner(),
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
@@ -483,6 +798,26 @@ class _VaultHomeScreenState extends State<VaultHomeScreen> with SingleTickerProv
                   decoration: const InputDecoration(
                     hintText: "Enter passwords, API keys, secrets, or secure notes...\nA .kromium file will be created automatically.",
                   ),
+                ),
+                const SizedBox(height: 12),
+                const Text("Container Filename (Optional)", style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: KromiumTheme.textMuted)),
+                const SizedBox(height: 6),
+                TextField(
+                  controller: _textFilenameController,
+                  style: const TextStyle(fontSize: 13, color: KromiumTheme.textWhite),
+                  decoration: const InputDecoration(
+                    hintText: "e.g. master_credentials (defaults to timestamp)",
+                    prefixIcon: Icon(Icons.description_outlined, size: 18, color: KromiumTheme.lavender),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                CheckboxListTile(
+                  value: _textSaveToPublicDownloads,
+                  onChanged: (val) => setState(() => _textSaveToPublicDownloads = val ?? true),
+                  title: const Text("📁 Save into Public Downloads (/Download/EquipoKromium)", style: TextStyle(fontSize: 12, color: KromiumTheme.lightAccent, fontWeight: FontWeight.w600)),
+                  subtitle: const Text("Guarantees immediate visibility in phone's Files and Downloads apps", style: TextStyle(fontSize: 10, color: KromiumTheme.textMuted)),
+                  controlAffinity: ListTileControlAffinity.leading,
+                  contentPadding: EdgeInsets.zero,
                 ),
               ],
             ),
@@ -526,7 +861,7 @@ class _VaultHomeScreenState extends State<VaultHomeScreen> with SingleTickerProv
           const SizedBox(height: 16),
           ElevatedButton.icon(
             icon: const Icon(Icons.lock, size: 16),
-            label: const Text("ENCRYPT & AUTO-CREATE .KROMIUM FILE"),
+            label: const Text("ENCRYPT & SAVE .KROMIUM FILE"),
             onPressed: _encryptDirectText,
           ),
         ],
@@ -541,6 +876,7 @@ class _VaultHomeScreenState extends State<VaultHomeScreen> with SingleTickerProv
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          _buildStorageBanner(),
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
@@ -595,10 +931,18 @@ class _VaultHomeScreenState extends State<VaultHomeScreen> with SingleTickerProv
                 ),
                 const SizedBox(height: 10),
                 CheckboxListTile(
+                  value: _fileSaveToPublicDownloads,
+                  onChanged: (val) => setState(() => _fileSaveToPublicDownloads = val ?? true),
+                  title: const Text("📁 Save container into Public Downloads (/Download/EquipoKromium)", style: TextStyle(fontSize: 12, color: KromiumTheme.lightAccent, fontWeight: FontWeight.w600)),
+                  subtitle: const Text("Ensures the resulting .kromium file is immediately findable", style: TextStyle(fontSize: 10, color: KromiumTheme.textMuted)),
+                  controlAffinity: ListTileControlAffinity.leading,
+                  contentPadding: EdgeInsets.zero,
+                ),
+                CheckboxListTile(
                   value: _autoDeleteSource,
                   onChanged: (val) => setState(() => _autoDeleteSource = val ?? true),
                   title: const Text("🗑️ Automatically securely shred & delete original file", style: TextStyle(fontSize: 12, color: KromiumTheme.lavender, fontWeight: FontWeight.bold)),
-                  subtitle: const Text("Overwrites with cryptographically secure random bytes before deleting", style: TextStyle(fontSize: 10, color: KromiumTheme.textMuted)),
+                  subtitle: const Text("Overwrites with cryptographically secure zero bytes before deleting", style: TextStyle(fontSize: 10, color: KromiumTheme.textMuted)),
                   controlAffinity: ListTileControlAffinity.leading,
                   contentPadding: EdgeInsets.zero,
                 ),
@@ -638,7 +982,7 @@ class _VaultHomeScreenState extends State<VaultHomeScreen> with SingleTickerProv
           const SizedBox(height: 16),
           ElevatedButton.icon(
             icon: const Icon(Icons.lock, size: 16),
-            label: const Text("ENCRYPT FILE & SHRED ORIGINAL"),
+            label: const Text("ENCRYPT FILE & SAVE TO DOWNLOADS"),
             onPressed: _encryptFileAutoDelete,
           ),
         ],
@@ -653,6 +997,7 @@ class _VaultHomeScreenState extends State<VaultHomeScreen> with SingleTickerProv
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          _buildStorageBanner(),
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
@@ -749,19 +1094,21 @@ class _VaultHomeScreenState extends State<VaultHomeScreen> with SingleTickerProv
                           Text("Decrypted Authenticated Data", style: TextStyle(fontWeight: FontWeight.bold, color: KromiumTheme.textWhite, fontSize: 13)),
                         ],
                       ),
-                      if (_decryptedPlaintext.isNotEmpty)
-                        IconButton(
-                          icon: const Icon(Icons.copy, color: KromiumTheme.lavender, size: 18),
-                          onPressed: () {
+                      IconButton(
+                        icon: const Icon(Icons.copy, color: KromiumTheme.lavender, size: 18),
+                        onPressed: () {
+                          if (_decryptedPlaintext.isNotEmpty) {
                             Clipboard.setData(ClipboardData(text: _decryptedPlaintext));
-                            _showFeedback("Copied to clipboard!");
-                          },
-                        ),
+                          }
+                          _showFeedback("Copied to clipboard!");
+                        },
+                      ),
                     ],
                   ),
                   const Divider(color: KromiumTheme.border),
                   Text("Original Name: ${_lastDecryptedMeta!['filename']}", style: const TextStyle(fontSize: 11, color: KromiumTheme.lightAccent)),
                   Text("Payload Size: ${_lastDecryptedMeta!['size']} bytes", style: const TextStyle(fontSize: 11, color: KromiumTheme.textMuted)),
+                  Text("PBKDF2 Iterations: ${_lastDecryptedMeta!['iterations']}", style: const TextStyle(fontSize: 11, color: KromiumTheme.textMuted)),
                   if (_decryptedPlaintext.isNotEmpty) ...[
                     const SizedBox(height: 10),
                     Container(
@@ -777,6 +1124,17 @@ class _VaultHomeScreenState extends State<VaultHomeScreen> with SingleTickerProv
                       ),
                     ),
                   ],
+                  const SizedBox(height: 14),
+                  ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: KromiumTheme.success.withOpacity(0.2),
+                      foregroundColor: KromiumTheme.textWhite,
+                      side: const BorderSide(color: KromiumTheme.success),
+                    ),
+                    icon: const Icon(Icons.download, size: 16, color: KromiumTheme.success),
+                    label: const Text("DEDICATED SAVE: EXPORT TO PUBLIC DOWNLOADS"),
+                    onPressed: _saveDecryptedTextToDownloads,
+                  ),
                 ],
               ),
             ),

@@ -28,3 +28,9 @@ flutter_mobile/build/
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# Environment variables & secrets
+.env
+.env.*
+*.pem
+*.key

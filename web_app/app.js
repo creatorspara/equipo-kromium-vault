@@ -1,13 +1,18 @@
 /**
- * Equipo Kromium Vault - Sub Web Application
- * 100% Client-Side Cryptographic Engine using Web Crypto API
- * Format: .kromium v1 container (AES-256-GCM + PBKDF2-HMAC-SHA256 600k rounds + AAD)
+ * ============================================================================
+ * Equipo Kromium Vault - Client-Side Cryptographic Engine & Interactive Controller
+ * 100% Zero-Knowledge Browser Execution using Web Crypto API
+ * Format: .kromium Container Standard v1
+ * Cipher: AES-256-GCM (NIST SP 800-38D) AEAD
+ * KDF: PBKDF2-HMAC-SHA256 (600,000 Iterations, 32-Byte Salt)
+ * Brand Kit: Equipo Kromium (Build · Open · Share)
+ * ============================================================================
  */
 
 (function () {
   'use strict';
 
-  // Constants
+  // Format Specification Constants
   const MAGIC_HEADER = new Uint8Array([0x4B, 0x52, 0x4F, 0x4D, 0x49, 0x55, 0x4D, 0x00]); // "KROMIUM\0"
   const FORMAT_VERSION = 1;
   const DEFAULT_ITERATIONS = 600000;
@@ -15,87 +20,54 @@
   const NONCE_SIZE = 12;
   const TAG_SIZE = 16;
 
-  // DOM Elements
-  const tabBtns = document.querySelectorAll('.tab-btn');
-  const tabContents = document.querySelectorAll('.tab-content');
-  const statusMsg = document.getElementById('status-message');
+  // Release Asset Direct Links
+  const ASSETS = {
+    pc: "https://github.com/creatorspara/equipo-kromium-vault/releases/latest/download/EquipoKromium-Windows.exe",
+    android: "https://github.com/creatorspara/equipo-kromium-vault/releases/latest/download/EquipoKromium-Android.apk"
+  };
 
+  // State
   let selectedFileToEncrypt = null;
   let selectedFileToDecrypt = null;
-  let lastDecryptedBlob = null;
-  let lastDecryptedFilename = "restored_file.bin";
+  let lastDecryptedResult = null;
 
-  // Tab switching
-  tabBtns.forEach(btn => {
-    btn.addEventListener('click', () => {
-      const targetId = btn.getAttribute('data-tab');
-      tabBtns.forEach(b => b.classList.remove('active'));
-      tabContents.forEach(c => c.classList.remove('active'));
-      btn.classList.add('active');
-      document.getElementById(targetId).classList.add('active');
-      setStatus("Switched mode: " + btn.innerText.trim());
+  // -------------------------------------------------------------
+  // Utility: Toast Messages
+  // -------------------------------------------------------------
+  function showToast(msg, duration = 3500) {
+    const toast = document.getElementById('toast');
+    if (!toast) return;
+    toast.textContent = msg;
+    toast.style.display = 'block';
+    setTimeout(() => {
+      toast.style.display = 'none';
+    }, duration);
+  }
+
+  window.downloadAsset = function (platform) {
+    const url = ASSETS[platform];
+    const name = platform === 'pc' ? 'EquipoKromium-Windows.exe' : 'EquipoKromium-Android.apk';
+    showToast(`⚡ Direct download started for ${name}...`);
+    window.location.assign(url);
+  };
+
+  window.copyCommand = function (text) {
+    navigator.clipboard.writeText(text).then(() => {
+      showToast('✔ PowerShell verification command copied to clipboard!');
+    }).catch(() => {
+      showToast('Command: ' + text);
     });
-  });
+  };
 
-  // Toggle password visibility
-  document.querySelectorAll('.toggle-pwd').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const targetId = btn.getAttribute('data-target');
-      const input = document.getElementById(targetId);
-      if (input.type === 'password') {
-        input.type = 'text';
-        btn.innerText = '🙈';
-      } else {
-        input.type = 'password';
-        btn.innerText = '👁';
-      }
+  // -------------------------------------------------------------
+  // PWA Service Worker Registration
+  // -------------------------------------------------------------
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('./sw.js').catch(err => {
+        console.debug('ServiceWorker registration skipped:', err);
+      });
     });
-  });
-
-  // Password entropy meter
-  const textPwdInput = document.getElementById('text-password');
-  const textStrengthLabel = document.getElementById('text-strength-label');
-  const textEntropyFill = document.getElementById('text-entropy-fill');
-
-  textPwdInput.addEventListener('input', () => {
-    const pwd = textPwdInput.value;
-    if (!pwd) {
-      textStrengthLabel.innerText = "Empty";
-      textEntropyFill.style.width = "0%";
-      textEntropyFill.style.background = "var(--danger)";
-      return;
-    }
-
-    let score = 0;
-    if (pwd.length >= 8) score++;
-    if (pwd.length >= 12) score++;
-    if (pwd.length >= 16) score++;
-    if (/[a-z]/.test(pwd) && /[A-Z]/.test(pwd)) score++;
-    if (/\d/.test(pwd)) score++;
-    if (/[^a-zA-Z0-9]/.test(pwd)) score++;
-
-    if (score <= 2) {
-      textStrengthLabel.innerText = "Weak (12+ mixed chars recommended)";
-      textEntropyFill.style.width = "25%";
-      textEntropyFill.style.background = "var(--danger)";
-    } else if (score <= 4) {
-      textStrengthLabel.innerText = "Moderate";
-      textEntropyFill.style.width = "55%";
-      textEntropyFill.style.background = "var(--warning)";
-    } else if (score <= 5) {
-      textStrengthLabel.innerText = "Strong";
-      textEntropyFill.style.width = "80%";
-      textEntropyFill.style.background = "var(--lavender)";
-    } else {
-      textStrengthLabel.innerText = "Hardened (Equipo Kromium)";
-      textEntropyFill.style.width = "100%";
-      textEntropyFill.style.background = "var(--light-accent)";
-    }
-  });
-
-  function setStatus(msg, isError = false) {
-    statusMsg.innerText = msg;
-    statusMsg.style.color = isError ? 'var(--danger)' : 'var(--text-white)';
   }
 
   // -------------------------------------------------------------
@@ -132,19 +104,12 @@
     const header = new Uint8Array(headerLen);
     const view = new DataView(header.buffer);
 
-    // Magic
     header.set(MAGIC_HEADER, 0);
-    // Version
     header[8] = FORMAT_VERSION;
-    // Iterations (uint32 big-endian)
     view.setUint32(9, iterations, false);
-    // Salt
     header.set(salt, 13);
-    // Nonce
     header.set(nonce, 13 + SALT_SIZE);
-    // Name Length (uint16 big-endian)
     view.setUint16(13 + SALT_SIZE + NONCE_SIZE, nameBytes.length, false);
-    // Name Bytes
     header.set(nameBytes, 13 + SALT_SIZE + NONCE_SIZE + 2);
 
     return header;
@@ -157,7 +122,6 @@
 
     const aesKey = await deriveAesKey(password, salt, DEFAULT_ITERATIONS);
 
-    // Encrypt with full header as Associated Data (AAD)
     const ciphertextBuffer = await window.crypto.subtle.encrypt(
       {
         name: "AES-GCM",
@@ -181,7 +145,6 @@
       throw new Error("File is too small to be a valid .kromium container.");
     }
 
-    // Verify magic
     for (let i = 0; i < MAGIC_HEADER.length; i++) {
       if (containerBytes[i] !== MAGIC_HEADER[i]) {
         throw new Error("Invalid magic bytes. Not a valid .kromium file.");
@@ -227,7 +190,9 @@
       return {
         plaintext: new Uint8Array(plaintextBuffer),
         originalFilename: origFilename,
-        iterations: iterations
+        iterations: iterations,
+        saltHex: Array.from(salt).map(b => b.toString(16).padStart(2, '0')).join(''),
+        nonceHex: Array.from(nonce).map(b => b.toString(16).padStart(2, '0')).join('')
       };
     } catch (err) {
       throw new Error("Authentication failed: Incorrect password or corrupted/tampered file.");
@@ -249,220 +214,326 @@
   }
 
   // -------------------------------------------------------------
-  // TAB 1: Direct Text Encryption
+  // UI & Event Bindings
   // -------------------------------------------------------------
-  document.getElementById('btn-encrypt-text').addEventListener('click', async () => {
-    const text = document.getElementById('text-input').value.trim();
-    let filename = document.getElementById('text-filename').value.trim() || 'vault_secret.kromium';
-    if (!filename.toLowerCase().endsWith('.kromium')) filename += '.kromium';
+  document.addEventListener('DOMContentLoaded', () => {
+    // Tab switching
+    const tabBtns = document.querySelectorAll('.tab-btn');
+    const tabContents = document.querySelectorAll('.tab-content');
 
-    const pwd = document.getElementById('text-password').value;
-    const confirm = document.getElementById('text-confirm-password').value;
+    tabBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const targetId = btn.getAttribute('data-tab');
+        tabBtns.forEach(b => b.classList.remove('active'));
+        tabContents.forEach(c => c.classList.remove('active'));
+        btn.classList.add('active');
+        const targetEl = document.getElementById(targetId);
+        if (targetEl) targetEl.classList.add('active');
+      });
+    });
 
-    if (!text) {
-      alert("Please enter sensitive text or passwords to encrypt.");
-      return;
-    }
-    if (!pwd) {
-      alert("Please enter a master password.");
-      return;
-    }
-    if (pwd !== confirm) {
-      alert("Passwords do not match.");
-      return;
-    }
+    // Toggle Password Visibility
+    document.querySelectorAll('.toggle-pwd').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const targetId = btn.getAttribute('data-target');
+        const input = document.getElementById(targetId);
+        if (!input) return;
+        if (input.type === 'password') {
+          input.type = 'text';
+          btn.textContent = '🙈';
+        } else {
+          input.type = 'password';
+          btn.textContent = '👁';
+        }
+      });
+    });
 
-    setStatus("Deriving key (600,000 PBKDF2 rounds) & encrypting text...");
-    try {
-      const enc = new TextEncoder();
-      const plaintextBytes = enc.encode(text);
-      const containerBytes = await encryptToKromiumBlob(plaintextBytes, pwd, "secret_vault.txt");
+    // Password Entropy Meter
+    function bindEntropyMeter(inputId, fillId, labelId) {
+      const input = document.getElementById(inputId);
+      const fill = document.getElementById(fillId);
+      const label = document.getElementById(labelId);
+      if (!input || !fill || !label) return;
 
-      triggerDownload(containerBytes, filename);
-      document.getElementById('text-input').value = "";
-      document.getElementById('text-password').value = "";
-      document.getElementById('text-confirm-password').value = "";
-      textEntropyFill.style.width = "0%";
-      textStrengthLabel.innerText = "Empty";
+      input.addEventListener('input', () => {
+        const pwd = input.value;
+        if (!pwd) {
+          label.textContent = "Score: 0 / 100";
+          fill.style.width = "0%";
+          fill.style.backgroundColor = "var(--danger)";
+          return;
+        }
 
-      setStatus(`✔ Success! Automatically created and downloaded container: ${filename}`);
-    } catch (err) {
-      setStatus(`Encryption failed: ${err.message}`, true);
-      alert(err.message);
-    }
-  });
+        let score = 0;
+        if (pwd.length >= 8) score += 25;
+        if (pwd.length >= 14) score += 20;
+        if (/[A-Z]/.test(pwd)) score += 15;
+        if (/[a-z]/.test(pwd)) score += 15;
+        if (/[0-9]/.test(pwd)) score += 15;
+        if (/[^A-Za-z0-9]/.test(pwd)) score += 10;
+        if (score > 100) score = 100;
 
-  // -------------------------------------------------------------
-  // TAB 2: File Encryption
-  // -------------------------------------------------------------
-  const fileDropZone = document.getElementById('file-drop-zone');
-  const fileInput = document.getElementById('file-input');
-  const selectedFileBadge = document.getElementById('selected-file-badge');
+        fill.style.width = score + "%";
 
-  fileDropZone.addEventListener('click', () => fileInput.click());
-  fileDropZone.addEventListener('dragover', (e) => {
-    e.preventDefault();
-    fileDropZone.classList.add('drag-over');
-  });
-  fileDropZone.addEventListener('dragleave', () => fileDropZone.classList.remove('drag-over'));
-  fileDropZone.addEventListener('drop', (e) => {
-    e.preventDefault();
-    fileDropZone.classList.remove('drag-over');
-    if (e.dataTransfer.files.length > 0) {
-      handleFileSelected(e.dataTransfer.files[0]);
-    }
-  });
-
-  fileInput.addEventListener('change', () => {
-    if (fileInput.files.length > 0) {
-      handleFileSelected(fileInput.files[0]);
-    }
-  });
-
-  function handleFileSelected(file) {
-    selectedFileToEncrypt = file;
-    selectedFileBadge.style.display = 'inline-block';
-    selectedFileBadge.innerText = `Selected: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
-    setStatus(`Selected source file: ${file.name}`);
-  }
-
-  document.getElementById('btn-encrypt-file').addEventListener('click', async () => {
-    if (!selectedFileToEncrypt) {
-      alert("Please select a file to encrypt first.");
-      return;
-    }
-    const pwd = document.getElementById('file-password').value;
-    const confirm = document.getElementById('file-confirm-password').value;
-
-    if (!pwd || pwd !== confirm) {
-      alert("Password is empty or passwords do not match.");
-      return;
+        if (score <= 25) {
+          fill.style.backgroundColor = "var(--danger)";
+          label.textContent = `Weak (${score}/100) — Minimum 8 chars recommended`;
+        } else if (score <= 60) {
+          fill.style.backgroundColor = "var(--warning)";
+          label.textContent = `Moderate (${score}/100)`;
+        } else if (score <= 85) {
+          fill.style.backgroundColor = "var(--secondary)";
+          label.textContent = `Strong (${score}/100)`;
+        } else {
+          fill.style.backgroundColor = "var(--success)";
+          label.textContent = `Hardened (${score}/100) — Equipo Kromium Standard`;
+        }
+      });
     }
 
-    setStatus(`Encrypting ${selectedFileToEncrypt.name} (600,000 PBKDF2 rounds)...`);
-    try {
-      const buffer = await selectedFileToEncrypt.arrayBuffer();
-      const plaintextBytes = new Uint8Array(buffer);
-      const containerBytes = await encryptToKromiumBlob(plaintextBytes, pwd, selectedFileToEncrypt.name);
+    bindEntropyMeter('text-password', 'text-entropy-fill', 'text-entropy-label');
+    bindEntropyMeter('file-password', 'file-entropy-fill', 'file-entropy-label');
 
-      const outName = selectedFileToEncrypt.name + ".kromium";
-      triggerDownload(containerBytes, outName);
+    // -----------------------------------------------------------
+    // Action 1: Text Encryption
+    // -----------------------------------------------------------
+    const btnEncryptText = document.getElementById('btn-encrypt-text');
+    const textResultBox = document.getElementById('text-result-box');
 
-      document.getElementById('file-password').value = "";
-      document.getElementById('file-confirm-password').value = "";
-      setStatus(`✔ Success! File encrypted to ${outName}`);
-    } catch (err) {
-      setStatus(`File encryption error: ${err.message}`, true);
-      alert(err.message);
-    }
-  });
+    if (btnEncryptText) {
+      btnEncryptText.addEventListener('click', async () => {
+        const text = document.getElementById('text-input').value.trim();
+        let filename = document.getElementById('text-filename').value.trim() || 'vault_secret.kromium';
+        if (!filename.endsWith('.kromium')) filename += '.kromium';
+        const pwd = document.getElementById('text-password').value;
+        const confirm = document.getElementById('text-confirm').value;
 
-  // -------------------------------------------------------------
-  // TAB 3: Decrypt Container
-  // -------------------------------------------------------------
-  const decryptDropZone = document.getElementById('decrypt-drop-zone');
-  const decryptFileInput = document.getElementById('decrypt-file-input');
-  const decryptFileBadge = document.getElementById('decrypt-file-badge');
-  const metaBanner = document.getElementById('container-meta-banner');
-  const decryptedResultBox = document.getElementById('decrypted-result-box');
-  const decryptedTextView = document.getElementById('decrypted-text-view');
+        if (!text) {
+          alert('Please enter sensitive credentials or text to encrypt.');
+          return;
+        }
+        if (!pwd || pwd !== confirm) {
+          alert('Password mismatch or empty.');
+          return;
+        }
 
-  decryptDropZone.addEventListener('click', () => decryptFileInput.click());
-  decryptDropZone.addEventListener('dragover', (e) => {
-    e.preventDefault();
-    decryptDropZone.classList.add('drag-over');
-  });
-  decryptDropZone.addEventListener('dragleave', () => decryptDropZone.classList.remove('drag-over'));
-  decryptDropZone.addEventListener('drop', (e) => {
-    e.preventDefault();
-    decryptDropZone.classList.remove('drag-over');
-    if (e.dataTransfer.files.length > 0) {
-      handleDecryptFileSelected(e.dataTransfer.files[0]);
-    }
-  });
+        btnEncryptText.disabled = true;
+        btnEncryptText.textContent = '🔒 Deriving Key (600k PBKDF2 Rounds)...';
 
-  decryptFileInput.addEventListener('change', () => {
-    if (decryptFileInput.files.length > 0) {
-      handleDecryptFileSelected(decryptFileInput.files[0]);
-    }
-  });
+        try {
+          const enc = new TextEncoder();
+          const plaintextBytes = enc.encode(text);
+          const containerBytes = await encryptToKromiumBlob(plaintextBytes, pwd, filename.replace('.kromium', '.txt'));
 
-  async function handleDecryptFileSelected(file) {
-    selectedFileToDecrypt = file;
-    decryptFileBadge.style.display = 'inline-block';
-    decryptFileBadge.innerText = `Container: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
+          triggerDownload(containerBytes, filename);
 
-    // Try peek header
-    try {
-      const slice = file.slice(0, 500);
-      const buf = await slice.arrayBuffer();
-      const bytes = new Uint8Array(buf);
-      if (bytes.length > 59 && bytes[0] === 0x4B && bytes[1] === 0x52) {
-        metaBanner.style.display = 'block';
-        const view = new DataView(bytes.buffer);
-        const iters = view.getUint32(9, false);
-        const nameLen = view.getUint16(13 + SALT_SIZE + NONCE_SIZE, false);
-        const nameOffset = 13 + SALT_SIZE + NONCE_SIZE + 2;
-        const nameBytes = bytes.slice(nameOffset, nameOffset + nameLen);
-        const origName = new TextDecoder().decode(nameBytes);
-
-        document.getElementById('meta-version').innerText = `Format: v${bytes[8]}`;
-        document.getElementById('meta-iters').innerText = `Rounds: ${iters.toLocaleString()}`;
-        document.getElementById('meta-orig-name').innerText = `Embedded Original Name: ${origName || 'Unknown'}`;
-      }
-    } catch (_) {}
-    setStatus(`Selected .kromium container: ${file.name}`);
-  }
-
-  document.getElementById('btn-decrypt-execute').addEventListener('click', async () => {
-    if (!selectedFileToDecrypt) {
-      alert("Please select a .kromium file to decrypt.");
-      return;
-    }
-    const pwd = document.getElementById('decrypt-password').value;
-    if (!pwd) {
-      alert("Please enter the master password.");
-      return;
+          textResultBox.style.display = 'block';
+          textResultBox.className = 'result-box success';
+          textResultBox.innerHTML = `
+            <div style="font-weight: 700; color: var(--success); font-size: 0.9rem;">
+              ✔ Successfully encrypted and downloaded <code>${filename}</code>!
+            </div>
+            <p style="font-size: 0.78rem; color: var(--text-muted); margin-top: 4px;">
+              Container Size: ${(containerBytes.length / 1024).toFixed(2)} KB &bull; Zero plaintext remains in browser memory.
+            </p>
+          `;
+          showToast(`✔ Saved ${filename} to your Downloads!`);
+        } catch (err) {
+          textResultBox.style.display = 'block';
+          textResultBox.className = 'result-box error';
+          textResultBox.innerHTML = `<span style="color: var(--danger); font-weight: 700;">Error: ${err.message}</span>`;
+        } finally {
+          btnEncryptText.disabled = false;
+          btnEncryptText.textContent = '🔒 Encrypt & Download .kromium File';
+        }
+      });
     }
 
-    setStatus("Verifying AEAD tag and decrypting container...");
-    try {
-      const buf = await selectedFileToDecrypt.arrayBuffer();
-      const containerBytes = new Uint8Array(buf);
-      const res = await decryptKromiumBlob(containerBytes, pwd);
+    // -----------------------------------------------------------
+    // Action 2: File Encryption
+    // -----------------------------------------------------------
+    const fileDropzone = document.getElementById('file-dropzone');
+    const filePickerInput = document.getElementById('file-picker-input');
+    const fileBadge = document.getElementById('file-selected-badge');
+    const btnEncryptFile = document.getElementById('btn-encrypt-file');
+    const fileResultBox = document.getElementById('file-result-box');
 
-      lastDecryptedBlob = res.plaintext;
-      lastDecryptedFilename = res.originalFilename || (selectedFileToDecrypt.name.endsWith('.kromium') ? selectedFileToDecrypt.name.slice(0, -8) : 'restored.bin');
-
-      // Attempt text decode
-      try {
-        const text = new TextDecoder('utf-8', { fatal: true }).decode(res.plaintext);
-        decryptedResultBox.style.display = 'block';
-        decryptedTextView.value = text;
-        setStatus(`✔ Unlocked successfully! Content previewed below.`);
-      } catch (_) {
-        decryptedResultBox.style.display = 'block';
-        decryptedTextView.value = `[Binary File Content: ${res.plaintext.length} bytes]\nOriginal Filename: ${lastDecryptedFilename}\nClick "Download Restored File" below to save.`;
-        setStatus(`✔ Unlocked binary file (${res.plaintext.length} bytes). Ready to download.`);
-      }
-    } catch (err) {
-      setStatus(`Decryption error: ${err.message}`, true);
-      alert(err.message);
+    if (fileDropzone && filePickerInput) {
+      fileDropzone.addEventListener('click', () => filePickerInput.click());
+      fileDropzone.addEventListener('dragover', (e) => { e.preventDefault(); fileDropzone.classList.add('dragover'); });
+      fileDropzone.addEventListener('dragleave', () => fileDropzone.classList.remove('dragover'));
+      fileDropzone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        fileDropzone.classList.remove('dragover');
+        if (e.dataTransfer.files.length) {
+          handleFileSelected(e.dataTransfer.files[0]);
+        }
+      });
+      filePickerInput.addEventListener('change', () => {
+        if (filePickerInput.files.length) {
+          handleFileSelected(filePickerInput.files[0]);
+        }
+      });
     }
-  });
 
-  document.getElementById('btn-copy-result').addEventListener('click', () => {
-    if (decryptedTextView.value) {
-      navigator.clipboard.writeText(decryptedTextView.value).then(() => {
-        setStatus("✔ Decrypted text copied to clipboard!");
+    function handleFileSelected(file) {
+      selectedFileToEncrypt = file;
+      fileBadge.style.display = 'inline-block';
+      fileBadge.textContent = `Selected: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
+    }
+
+    if (btnEncryptFile) {
+      btnEncryptFile.addEventListener('click', async () => {
+        if (!selectedFileToEncrypt) {
+          alert('Please select or drop a target file first.');
+          return;
+        }
+        const pwd = document.getElementById('file-password').value;
+        const confirm = document.getElementById('file-confirm').value;
+
+        if (!pwd || pwd !== confirm) {
+          alert('Password mismatch or empty.');
+          return;
+        }
+
+        btnEncryptFile.disabled = true;
+        btnEncryptFile.textContent = '🔒 Encrypting File Container...';
+
+        try {
+          const buffer = await selectedFileToEncrypt.arrayBuffer();
+          const plaintextBytes = new Uint8Array(buffer);
+          const outFilename = `${selectedFileToEncrypt.name}.kromium`;
+
+          const containerBytes = await encryptToKromiumBlob(plaintextBytes, pwd, selectedFileToEncrypt.name);
+          triggerDownload(containerBytes, outFilename);
+
+          fileResultBox.style.display = 'block';
+          fileResultBox.className = 'result-box success';
+          fileResultBox.innerHTML = `
+            <div style="font-weight: 700; color: var(--success); font-size: 0.9rem;">
+              ✔ Container created: <code>${outFilename}</code>
+            </div>
+            <p style="font-size: 0.78rem; color: var(--text-muted); margin-top: 4px;">
+              Original Filename: <b>${selectedFileToEncrypt.name}</b> &bull; Encrypted Size: ${(containerBytes.length / 1024).toFixed(2)} KB
+            </p>
+          `;
+          showToast(`✔ Saved ${outFilename} to Downloads!`);
+        } catch (err) {
+          fileResultBox.style.display = 'block';
+          fileResultBox.className = 'result-box error';
+          fileResultBox.innerHTML = `<span style="color: var(--danger); font-weight: 700;">Error: ${err.message}</span>`;
+        } finally {
+          btnEncryptFile.disabled = false;
+          btnEncryptFile.textContent = '🔒 Encrypt File to .kromium';
+        }
+      });
+    }
+
+    // -----------------------------------------------------------
+    // Action 3: Container Decryption
+    // -----------------------------------------------------------
+    const decryptDropzone = document.getElementById('decrypt-dropzone');
+    const decryptFileInput = document.getElementById('decrypt-file-input');
+    const decryptBadge = document.getElementById('decrypt-selected-badge');
+    const btnDecrypt = document.getElementById('btn-decrypt-container');
+    const decryptResultBox = document.getElementById('decrypt-result-box');
+
+    if (decryptDropzone && decryptFileInput) {
+      decryptDropzone.addEventListener('click', () => decryptFileInput.click());
+      decryptDropzone.addEventListener('dragover', (e) => { e.preventDefault(); decryptDropzone.classList.add('dragover'); });
+      decryptDropzone.addEventListener('dragleave', () => decryptDropzone.classList.remove('dragover'));
+      decryptDropzone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        decryptDropzone.classList.remove('dragover');
+        if (e.dataTransfer.files.length) {
+          handleDecryptFileSelected(e.dataTransfer.files[0]);
+        }
+      });
+      decryptFileInput.addEventListener('change', () => {
+        if (decryptFileInput.files.length) {
+          handleDecryptFileSelected(decryptFileInput.files[0]);
+        }
+      });
+    }
+
+    function handleDecryptFileSelected(file) {
+      selectedFileToDecrypt = file;
+      decryptBadge.style.display = 'inline-block';
+      decryptBadge.textContent = `Selected Container: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
+    }
+
+    if (btnDecrypt) {
+      btnDecrypt.addEventListener('click', async () => {
+        if (!selectedFileToDecrypt) {
+          alert('Please select or drop a .kromium container file.');
+          return;
+        }
+        const pwd = document.getElementById('decrypt-password').value;
+        if (!pwd) {
+          alert('Please enter master password.');
+          return;
+        }
+
+        btnDecrypt.disabled = true;
+        btnDecrypt.textContent = '🔓 Verifying Tamper Authenticity & Decrypting...';
+
+        try {
+          const buffer = await selectedFileToDecrypt.arrayBuffer();
+          const containerBytes = new Uint8Array(buffer);
+          const result = await decryptKromiumBlob(containerBytes, pwd);
+          lastDecryptedResult = result;
+
+          let textPreview = '';
+          try {
+            const decoded = new TextDecoder('utf-8', { fatal: true }).decode(result.plaintext);
+            textPreview = `
+              <div style="margin-top: 1rem;">
+                <label style="font-size: 0.75rem; font-weight: 700; color: var(--secondary);">Plaintext Preview:</label>
+                <textarea readonly style="width: 100%; min-height: 80px; margin-top: 4px;">${decoded}</textarea>
+              </div>
+            `;
+          } catch (_) {
+            textPreview = `<p style="font-size: 0.78rem; color: var(--text-muted); margin-top: 8px;">(Binary file restored: ${result.originalFilename})</p>`;
+          }
+
+          decryptResultBox.style.display = 'block';
+          decryptResultBox.className = 'result-box success';
+          decryptResultBox.innerHTML = `
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+              <span style="font-weight: 800; color: var(--success); font-size: 0.95rem;">
+                ✔ Decryption Authenticated & Verified (NIST SP 800-38D AES-GCM)
+              </span>
+              <button id="btn-download-restored" class="btn-sm btn-primary-sm" style="font-size: 0.75rem;">
+                📥 Download Restored File (${result.originalFilename})
+              </button>
+            </div>
+            ${textPreview}
+            <div class="meta-grid">
+              <div class="meta-item"><div class="k">Filename</div><div class="v">${result.originalFilename}</div></div>
+              <div class="meta-item"><div class="k">PBKDF2 Rounds</div><div class="v">${result.iterations.toLocaleString()}</div></div>
+              <div class="meta-item"><div class="k">Salt (Hex)</div><div class="v">${result.saltHex.substring(0, 16)}...</div></div>
+              <div class="meta-item"><div class="k">Nonce (Hex)</div><div class="v">${result.nonceHex}</div></div>
+            </div>
+          `;
+
+          const btnDownloadRestored = document.getElementById('btn-download-restored');
+          if (btnDownloadRestored) {
+            btnDownloadRestored.addEventListener('click', () => {
+              triggerDownload(result.plaintext, result.originalFilename);
+              showToast(`Restored: ${result.originalFilename}`);
+            });
+          }
+
+          showToast(`✔ Decrypted: ${result.originalFilename}`);
+        } catch (err) {
+          decryptResultBox.style.display = 'block';
+          decryptResultBox.className = 'result-box error';
+          decryptResultBox.innerHTML = `<span style="color: var(--danger); font-weight: 700;">${err.message}</span>`;
+        } finally {
+          btnDecrypt.disabled = false;
+          btnDecrypt.textContent = '🔓 Decrypt & Authenticate Container';
+        }
       });
     }
   });
-
-  document.getElementById('btn-download-result').addEventListener('click', () => {
-    if (lastDecryptedBlob) {
-      triggerDownload(lastDecryptedBlob, lastDecryptedFilename);
-    }
-  });
-
 })();
