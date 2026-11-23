@@ -201,13 +201,26 @@ class _VaultHomeScreenState extends State<VaultHomeScreen> with SingleTickerProv
     }
   }
 
+  int _getFileSize(PlatformFile file) {
+    if (file.path != null) {
+      try {
+        return File(file.path!).lengthSync();
+      } catch (_) {}
+    }
+    return 0;
+  }
+
   // Action 2: File Encryption -> Auto-delete source file
   Future<void> _pickSourceFile() async {
-    final result = await FilePicker.platform.pickFiles();
-    if (result != null && result.files.isNotEmpty) {
-      setState(() {
-        _selectedFile = result.files.first;
-      });
+    try {
+      final files = await FilePicker.pickFiles();
+      if (files.isNotEmpty) {
+        setState(() {
+          _selectedFile = files.first;
+        });
+      }
+    } catch (e) {
+      _showFeedback("Error picking file: $e", isError: true);
     }
   }
 
@@ -254,16 +267,20 @@ class _VaultHomeScreenState extends State<VaultHomeScreen> with SingleTickerProv
 
   // Action 3: Decryption & Auto-Delete Container
   Future<void> _pickKromiumFile() async {
-    final result = await FilePicker.platform.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: ['kromium', 'bin'],
-    );
-    if (result != null && result.files.isNotEmpty) {
-      setState(() {
-        _selectedKromiumFile = result.files.first;
-        _decryptedPlaintext = "";
-        _lastDecryptedMeta = null;
-      });
+    try {
+      final files = await FilePicker.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['kromium', 'bin'],
+      );
+      if (files.isNotEmpty) {
+        setState(() {
+          _selectedKromiumFile = files.first;
+          _decryptedPlaintext = "";
+          _lastDecryptedMeta = null;
+        });
+      }
+    } catch (e) {
+      _showFeedback("Error picking .kromium file: $e", isError: true);
     }
   }
 
@@ -567,7 +584,7 @@ class _VaultHomeScreenState extends State<VaultHomeScreen> with SingleTickerProv
                                 ),
                               ),
                               if (_selectedFile != null)
-                                Text("${(_selectedFile!.size / 1024).toStringAsFixed(1)} KB", style: const TextStyle(fontSize: 11, color: KromiumTheme.lavender)),
+                                Text("${(_getFileSize(_selectedFile!) / 1024).toStringAsFixed(1)} KB", style: const TextStyle(fontSize: 11, color: KromiumTheme.lavender)),
                             ],
                           ),
                         ),
