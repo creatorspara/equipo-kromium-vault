@@ -16,3 +16,16 @@ subprojects {
 tasks.register("clean", Delete) {
     delete rootProject.buildDir
 }
+
+
+// Equipo Kromium: Force compileSdk 36 across all subproject plugins
+subprojects {
+    afterEvaluate { project ->
+        if (project.hasProperty("android")) {
+            try {
+                project.android.compileSdkVersion = 36
+            } catch (Exception ignored) {}
+        }
+    }
+}
+
