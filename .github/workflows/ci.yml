@@ -68,7 +68,25 @@ jobs:
       - name: Build and Verify Android Release APK
         run: |
           cd flutter_mobile
-          chmod +x android/gradlew
+          # Back up custom launcher icons and custom MainActivity
+          mkdir -p /tmp/res_backup /tmp/kotlin_backup
+          cp -r android/app/src/main/res/* /tmp/res_backup/ || true
+          cp -r android/app/src/main/kotlin/* /tmp/kotlin_backup/ || true
+
+          # Remove stale/conflicting android setup
+          rm -rf android
+
+          # Generate 100% official version-matched Flutter Android project
+          flutter create --platforms=android --org com.equipokromium --project-name equipo_kromium_vault .
+
+          # Restore custom branding and MainActivity
+          cp -r /tmp/res_backup/* android/app/src/main/res/ || true
+          cp -r /tmp/kotlin_backup/* android/app/src/main/kotlin/ || true
+
+          # Configure app label and storage permissions
+          sed -i 's/<application/<uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" \/>\n    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" \/>\n    <application/g' android/app/src/main/AndroidManifest.xml
+          sed -i 's/android:label="[^"]*"/android:label="Equipo Kromium Vault"/g' android/app/src/main/AndroidManifest.xml
+
           flutter pub get
-          flutter build apk --release --android-skip-build-dependency-validation
+          flutter build apk --release
           ls -lh build/app/outputs/flutter-apk/app-release.apk
