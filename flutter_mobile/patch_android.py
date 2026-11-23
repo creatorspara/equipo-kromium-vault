@@ -52,7 +52,8 @@ def patch_root_build_gradle():
         patch = """
 // Equipo Kromium: Force compileSdk 36 across all subproject plugins
 subprojects {
-    afterEvaluate {
+    if (project.name == "app") return@subprojects
+    val configureProject: () -> Unit = {
         val androidExt = project.extensions.findByName("android")
         if (androidExt != null) {
             try {
@@ -71,17 +72,33 @@ subprojects {
             }
         }
     }
+
+    if (project.state.executed) {
+        configureProject()
+    } else {
+        project.afterEvaluate {
+            configureProject()
+        }
+    }
 }
 """
     else:
         patch = """
 // Equipo Kromium: Force compileSdk 36 across all subproject plugins
-subprojects {
-    afterEvaluate { project ->
+subprojects { project ->
+    if (project.name == "app") return
+    def configureAndroid = {
         if (project.hasProperty("android")) {
             try {
                 project.android.compileSdkVersion = 36
             } catch (Exception ignored) {}
+        }
+    }
+    if (project.state.executed) {
+        configureAndroid()
+    } else {
+        project.afterEvaluate {
+            configureAndroid()
         }
     }
 }
