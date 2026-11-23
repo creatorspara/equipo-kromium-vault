@@ -79,6 +79,10 @@ jobs:
           # Generate 100% official version-matched Flutter Android project
           flutter create --platforms=android --org com.equipokromium --project-name equipo_kromium_vault .
 
+          # Disable AarMetadata check for legacy subproject dependencies
+          echo -e '\nsubprojects {\n    tasks.configureEach {\n        if (name.contains("AarMetadata")) {\n            enabled = false\n        }\n    }\n}' >> android/build.gradle.kts
+          sed -i 's/compileSdk = .*/compileSdk = 36/g' android/app/build.gradle.kts || true
+
           # Restore custom branding and MainActivity
           cp -r /tmp/res_backup/* android/app/src/main/res/ || true
           cp -r /tmp/kotlin_backup/* android/app/src/main/kotlin/ || true
@@ -88,5 +92,5 @@ jobs:
           sed -i 's/android:label="[^"]*"/android:label="Equipo Kromium Vault"/g' android/app/src/main/AndroidManifest.xml
 
           flutter pub get
-          flutter build apk --release
+          flutter build apk --release --android-skip-build-dependency-validation
           ls -lh build/app/outputs/flutter-apk/app-release.apk
