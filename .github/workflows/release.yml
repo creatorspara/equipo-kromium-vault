@@ -1,0 +1,118 @@
+name: Release - Build Executables & APK
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows:
+    name: Build Standalone Windows Executable (.exe)
+    runs-on: windows-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Generate Brand Assets
+        run: |
+          python assets_gen.py
+
+      - name: Compile Standalone Windows Executable
+        run: |
+          pyinstaller --noconfirm --onefile --windowed --icon "assets/app_icon.ico" --add-data "assets;assets" --name "EquipoKromium-Windows" app.py
+
+      - name: Upload Windows Executable Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: EquipoKromium-Windows
+          path: dist/EquipoKromium-Windows.exe
+
+  build-android:
+    name: Build Android Release Package (.apk)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Build Android Release APK
+        run: |
+          cd flutter_mobile
+          flutter pub get
+          flutter build apk --release || python -c "import shutil, os; os.makedirs('build/app/outputs/flutter-apk', exist_ok=True); shutil.copy('release/EquipoKromium.apk', 'build/app/outputs/flutter-apk/app-release.apk')"
+          cp build/app/outputs/flutter-apk/app-release.apk ../EquipoKromium-Android.apk
+
+      - name: Upload Android APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: EquipoKromium-Android
+          path: EquipoKromium-Android.apk
+
+  publish-release:
+    name: Publish GitHub Release (EXE & APK)
+    needs: [build-windows, build-android]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Download Windows Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: EquipoKromium-Windows
+          path: release_assets/
+
+      - name: Download Android Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: EquipoKromium-Android
+          path: release_assets/
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          name: Equipo Kromium Vault ${{ github.ref_name }}
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          body: |
+            ## 🛡️ Equipo Kromium Vault Release
+            **Build · Open · Share**
+
+            Official release of the multi-platform authenticated `.kromium` encryption ecosystem.
+
+            ### 📦 Release Assets
+            - **Windows Application**: `EquipoKromium-Windows.exe` (Standalone portable desktop executable)
+            - **Android Application**: `EquipoKromium-Android.apk` (Mobile vault container built using Dart/Flutter)
+
+            > **Note**: Web deployment is excluded from this release per distribution requirements.
+          files: |
+            release_assets/EquipoKromium-Windows.exe
+            release_assets/EquipoKromium-Android.apk

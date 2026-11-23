@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Equipo Kromium Vault | Secure Authenticated Encryption</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <link rel="icon" type="image/png" href="../assets/app_icon.png">
+</head>
+<body>
+  <!-- Ambient background glow elements -->
+  <div class="ambient-glow glow-1"></div>
+  <div class="ambient-glow glow-2"></div>
+  <div class="cyber-grid"></div>
+
+  <div class="app-wrapper">
+    <!-- Brand Header -->
+    <header class="brand-header">
+      <div class="header-left">
+        <div class="brand-logo-container">
+          <svg class="kromium-k-svg" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <polygon points="10,15 35,15 55,45 30,45" fill="#6C4DFF" />
+            <polygon points="10,55 35,55 55,85 30,85" fill="#6C4DFF" />
+            <polygon points="65,15 90,15 55,50 40,50" fill="#A78BFA" />
+            <polygon points="40,50 60,50 90,85 65,85" fill="#6C4DFF" />
+          </svg>
+        </div>
+        <div class="brand-titles">
+          <div class="brand-title-row">
+            <h1>Equipo Kromium</h1>
+            <span class="community-pill">Open Source</span>
+          </div>
+          <p class="brand-tagline">Build &middot; Open &middot; Share</p>
+        </div>
+      </div>
+      <div class="header-right">
+        <span class="spec-badge">AES-256-GCM &bull; 600k PBKDF2 Rounds</span>
+      </div>
+    </header>
+
+    <!-- Main Vault Card -->
+    <main class="vault-card">
+      <!-- Operation Navigation Tabs -->
+      <nav class="vault-tabs" role="tablist">
+        <button class="tab-btn active" data-tab="tab-text" id="tab-btn-text">
+          <span class="tab-icon">📝</span> Direct Text Vault
+        </button>
+        <button class="tab-btn" data-tab="tab-file" id="tab-btn-file">
+          <span class="tab-icon">📁</span> File Container Vault
+        </button>
+        <button class="tab-btn" data-tab="tab-decrypt" id="tab-btn-decrypt">
+          <span class="tab-icon">🔓</span> Decrypt .kromium
+        </button>
+      </nav>
+
+      <!-- TAB 1: Direct Text Encryption -->
+      <section class="tab-content active" id="tab-text">
+        <div class="section-intro">
+          <h2>Direct Text &amp; Password Encryption</h2>
+          <p>Enter sensitive text or credentials below. Automatically compiles into a standalone, tamper-proof <code>.kromium</code> container file.</p>
+        </div>
+
+        <div class="form-group">
+          <label for="text-input">Sensitive Data / Passwords / Notes:</label>
+          <textarea id="text-input" rows="5" placeholder="Type or paste your sensitive credentials, secret tokens, or confidential notes..."></textarea>
+        </div>
+
+        <div class="form-group">
+          <label for="text-filename">Target .kromium Filename:</label>
+          <input type="text" id="text-filename" value="vault_secret.kromium" placeholder="vault_secret.kromium">
+        </div>
+
+        <div class="grid-2">
+          <div class="form-group">
+            <label for="text-password">Master Password:</label>
+            <div class="password-wrapper">
+              <input type="password" id="text-password" placeholder="Enter master password">
+              <button type="button" class="toggle-pwd" data-target="text-password">👁</button>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="text-confirm-password">Confirm Master Password:</label>
+            <div class="password-wrapper">
+              <input type="password" id="text-confirm-password" placeholder="Confirm master password">
+            </div>
+          </div>
+        </div>
+
+        <!-- Entropy meter -->
+        <div class="entropy-meter-container" id="text-entropy-meter">
+          <div class="entropy-header">
+            <span>Entropy Strength:</span>
+            <span class="strength-label" id="text-strength-label">Empty</span>
+          </div>
+          <div class="entropy-bar-track">
+            <div class="entropy-bar-fill" id="text-entropy-fill"></div>
+          </div>
+        </div>
+
+        <button class="btn-primary" id="btn-encrypt-text">
+          🔒 ENCRYPT TEXT &amp; DOWNLOAD .KROMIUM FILE
+        </button>
+      </section>
+
+      <!-- TAB 2: File Encryption -->
+      <section class="tab-content" id="tab-file">
+        <div class="section-intro">
+          <h2>File Container Encryption</h2>
+          <p>Select any document, database, or key file. Automatically encrypts using 256-bit AEAD with Associated Data (AAD).</p>
+        </div>
+
+        <!-- Drag & Drop Zone -->
+        <div class="drop-zone" id="file-drop-zone">
+          <div class="drop-zone-content">
+            <div class="upload-icon">📥</div>
+            <p class="drop-primary">Drag &amp; drop file here, or <span class="highlight">Browse</span></p>
+            <p class="drop-secondary">Supports any file format (Documents, keys, databases, images)</p>
+            <span class="selected-file-badge" id="selected-file-badge" style="display: none;"></span>
+          </div>
+          <input type="file" id="file-input" class="hidden-file-input">
+        </div>
+
+        <div class="grid-2">
+          <div class="form-group">
+            <label for="file-password">Master Password:</label>
+            <div class="password-wrapper">
+              <input type="password" id="file-password" placeholder="Enter master password">
+              <button type="button" class="toggle-pwd" data-target="file-password">👁</button>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="file-confirm-password">Confirm Master Password:</label>
+            <div class="password-wrapper">
+              <input type="password" id="file-confirm-password" placeholder="Confirm master password">
+            </div>
+          </div>
+        </div>
+
+        <button class="btn-primary" id="btn-encrypt-file">
+          🔒 ENCRYPT FILE TO .KROMIUM CONTAINER
+        </button>
+      </section>
+
+      <!-- TAB 3: Decrypt Container -->
+      <section class="tab-content" id="tab-decrypt">
+        <div class="section-intro">
+          <h2>Decrypt .kromium Container</h2>
+          <p>Select or drop a <code>.kromium</code> container file. Inspects cryptographic header parameters and unlocks plaintext.</p>
+        </div>
+
+        <div class="drop-zone" id="decrypt-drop-zone">
+          <div class="drop-zone-content">
+            <div class="upload-icon">🛡️</div>
+            <p class="drop-primary">Drag &amp; drop your <span class="highlight">.kromium</span> file here, or Browse</p>
+            <span class="selected-file-badge" id="decrypt-file-badge" style="display: none;"></span>
+          </div>
+          <input type="file" id="decrypt-file-input" accept=".kromium" class="hidden-file-input">
+        </div>
+
+        <!-- Header metadata banner -->
+        <div class="meta-banner" id="container-meta-banner" style="display: none;">
+          <div class="meta-row">
+            <span class="meta-item">✔ Valid Kromium Container</span>
+            <span class="meta-item" id="meta-version">Format: v1</span>
+            <span class="meta-item" id="meta-iters">Rounds: 600,000</span>
+          </div>
+          <div class="meta-filename" id="meta-orig-name">Embedded Original Name: </div>
+        </div>
+
+        <div class="form-group">
+          <label for="decrypt-password">Master Password:</label>
+          <div class="password-wrapper">
+            <input type="password" id="decrypt-password" placeholder="Enter master password to unlock container">
+            <button type="button" class="toggle-pwd" data-target="decrypt-password">👁</button>
+          </div>
+        </div>
+
+        <button class="btn-primary" id="btn-decrypt-execute">
+          🔓 DECRYPT CONTAINER &amp; RESTORE
+        </button>
+
+        <!-- Decrypted Viewer -->
+        <div class="decrypted-result-box" id="decrypted-result-box" style="display: none;">
+          <div class="result-header">
+            <span>Decrypted Plaintext Viewer:</span>
+            <div class="result-actions">
+              <button type="button" class="btn-secondary-sm" id="btn-copy-result">📋 Copy to Clipboard</button>
+              <button type="button" class="btn-secondary-sm" id="btn-download-result">💾 Download Restored File</button>
+            </div>
+          </div>
+          <textarea id="decrypted-text-view" readonly rows="5"></textarea>
+        </div>
+      </section>
+
+      <!-- Status Banner -->
+      <div class="status-banner" id="app-status-banner">
+        <span class="status-indicator"></span>
+        <span id="status-message">Ready. Select an operation to get started.</span>
+      </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="brand-footer">
+      <p>Equipo Kromium &bull; Student Led Developer Team &bull; Open Source Software</p>
+      <p class="footer-sub">100% Client-Side Cryptography &bull; Zero Server Retention &bull; NIST SP 800-38D Compliant</p>
+    </footer>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

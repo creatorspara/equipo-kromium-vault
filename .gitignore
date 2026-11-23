@@ -1,0 +1,30 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# PyInstaller build artifacts
+build/
+*.spec
+
+# Distribution binaries (built & attached via GitHub Releases)
+dist/
+
+# Flutter / Dart build artifacts
+flutter_mobile/.dart_tool/
+flutter_mobile/.flutter-plugins
+flutter_mobile/.flutter-plugins-dependencies
+flutter_mobile/.packages
+flutter_mobile/build/
+
+# Temporary crypto buffers and logs
+.kromium_tmp_*
+.kromium_dec_tmp_*
+.kromium_txt_tmp_*
+*.tmp
+*.log
+
+# Operating system files
+.DS_Store
+Thumbs.db
+desktop.ini
