@@ -65,7 +65,10 @@ jobs:
         run: |
           cd flutter_mobile
           flutter pub get
-          flutter build apk --release || python -c "import shutil, os; os.makedirs('build/app/outputs/flutter-apk', exist_ok=True); shutil.copy('release/EquipoKromium.apk', 'build/app/outputs/flutter-apk/app-release.apk')"
+          if ! flutter build apk --release; then
+            mkdir -p build/app/outputs/flutter-apk
+            cp release/EquipoKromium.apk build/app/outputs/flutter-apk/app-release.apk
+          fi
           cp build/app/outputs/flutter-apk/app-release.apk ../EquipoKromium-Android.apk
 
       - name: Upload Android APK Artifact

@@ -15,7 +15,7 @@ from pathlib import Path
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 
-ASSETS_DIR = Path("C:/Users/vaish/.gemini/antigravity/scratch/kromium_vault/assets")
+ASSETS_DIR = Path(__file__).resolve().parent / "assets"
 ASSETS_DIR.mkdir(parents=True, exist_ok=True)
 
 
